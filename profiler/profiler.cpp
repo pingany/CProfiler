@@ -41,27 +41,27 @@ struct Frame
 	uint tick;
 };
 
-typedef MAP<int, Info> FuncInfo;
+typedef MAP<uint, Info> FuncInfo;
 
 static FuncInfo counts;
 static stack<Frame> frames;
-static int x = 0;
+static uint current_function = 0;
 // static const Info empty_info = {0};
 
 #define TICK()	(clock())
 
 static void do_enter()
 {
-	FuncInfo::iterator iter = counts.find(x);
+	FuncInfo::iterator iter = counts.find(current_function);
 	if (iter != counts.end())
 		iter->second.count ++;
 	else
 	{
-		Info f = {1, 0};
-		counts.insert(pair<int, Info>(x, f));
+		Info info = {1, 0};
+		counts.insert(pair<uint, Info>(current_function, info));
 	}
-	Frame f= {x, 0};
-	frames.push(f);
+	Frame frame = {current_function, 0};
+	frames.push(frame);
 	Frame &topf = frames.top();
 	/* Get tick in the end, above code may take much time, which makes profiler not exact */
 	topf.tick = TICK();
@@ -70,7 +70,7 @@ static void do_enter()
 static void do_exit()
 {
 	/* Get tick first, following code may take much time, which makes profiler not exact */
-	int tick = TICK();
+	uint tick = TICK();
 	Frame &f = frames.top();
 	ASSERT(Exists(counts, f.func));
 	counts[f.func].ms += tick - f.tick;
@@ -115,8 +115,9 @@ extern "C" void profiler_print_info(const char* filename)
 #ifdef _MSC_VER
 extern "C" void __declspec(naked) _cdecl _penter( void ) {
 	_asm {
-		pop x
-		push x
+		/* Get the value in the top of stack. */
+		pop current_function
+		push current_function
 		push eax
 		push ebx
 		push ecx
