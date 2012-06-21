@@ -147,10 +147,6 @@
 			Name="Sources"
 			>
 			<File
-				RelativePath=".\Address2Symbol.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\Address2Symbol.h"
 				>
 			</File>
@@ -160,6 +156,10 @@
 			</File>
 			<File
 				RelativePath=".\profiler.h"
+				>
+			</File>
+			<File
+				RelativePath=".\WinAddress2Symbol.cpp"
 				>
 			</File>
 		</Filter>

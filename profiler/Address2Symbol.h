@@ -4,6 +4,8 @@
 
 #ifdef WIN32
 typedef unsigned __int64 U64;
+#elif defined( __GNUC__)
+typedef unsigned long long U64;
 #endif
 
 #ifndef BOOL
