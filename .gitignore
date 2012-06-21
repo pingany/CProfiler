@@ -1,0 +1,40 @@
+# Various junk
+.DS_Store
+CVS
+.*.swp
+*.o
+*.obj
+*~
+\#*#
+*.orig
+*.bak
+*.tmp
+UpgradeLog*.XML
+*.pyc
+*.cache
+Thumbs.db
+/cscope.out
+*.komodoproject
+/debug.txt
+*~
+\#*\#
+
+# Stuff that VS leaves around
+*.suo
+*.suo.old
+*.ncb
+*.sln.*.user
+*.vcproj.*.user
+/*.vcproj.bak*
+BuildLog.htm
+
+# Eclipse project files
+.cproject
+.project
+.settings
+
+# NetBeans project files
+nbproject/
+
+/debug/
+/release/
