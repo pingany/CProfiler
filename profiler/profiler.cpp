@@ -1,9 +1,22 @@
 #include <stdio.h>
-#include <map>
 #include <stack>
 #include <time.h>
 #include <assert.h>
 using namespace std;
+
+#ifdef NO_HASH_MAP
+#	define MAP map
+#	include <map>
+#else
+#	define MAP hash_map
+#	ifdef __GNUC__
+#		include <ext/hash_map>
+		using namespace __gnu_cxx;
+#	elif defined(_MSC_VER)
+#		include <hash_map>
+		using namespace stdext;
+#	endif
+#endif /* NO_HASH_MAP */
 
 #include "Address2Symbol.h"
 
@@ -16,8 +29,6 @@ using namespace std;
 #undef uint
 typedef unsigned int uint;
 
-#define FuncInfo map<int, Info>
-
 struct Info
 {
 	uint count;
@@ -29,6 +40,8 @@ struct Frame
 	uint func;
 	uint tick;
 };
+
+typedef MAP<int, Info> FuncInfo;
 
 static FuncInfo counts;
 static stack<Frame> frames;
@@ -99,29 +112,29 @@ extern "C" void profiler_print_info(const char* filename)
 	fclose(fout);
 }
 
-#ifdef WIN32
+#ifdef _MSC_VER
 extern "C" void __declspec(naked) _cdecl _penter( void ) {
 	_asm {
 		pop x
-			push x
-			push eax
-			push ebx
-			push ecx
-			push edx
-			push ebp
-			push edi
-			push esi
+		push x
+		push eax
+		push ebx
+		push ecx
+		push edx
+		push ebp
+		push edi
+		push esi
 	}
 	do_enter();
 	_asm {
 		pop esi
-			pop edi
-			pop ebp
-			pop edx
-			pop ecx
-			pop ebx
-			pop eax
-			ret
+		pop edi
+		pop ebp
+		pop edx
+		pop ecx
+		pop ebx
+		pop eax
+		ret
 	}
 }
 
@@ -129,25 +142,25 @@ extern "C" void __declspec(naked) _cdecl _pexit( void )
 {
 	_asm {
 		push eax
-			push ebx
-			push ecx
-			push edx
-			push ebp
-			push edi
-			push esi
+		push ebx
+		push ecx
+		push edx
+		push ebp
+		push edi
+		push esi
 	}
 
 	do_exit();
 
 	_asm {
 		pop esi
-			pop edi
-			pop ebp
-			pop edx
-			pop ecx
-			pop ebx
-			pop eax
-			ret
+		pop edi
+		pop ebp
+		pop edx
+		pop ecx
+		pop ebx
+		pop eax
+		ret
 	}
 }
 #endif

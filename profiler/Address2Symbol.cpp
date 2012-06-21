@@ -1,5 +1,5 @@
 
-#ifdef WIN32
+#ifdef _MSC_VER
 
 #include <stdio.h>
 #include <assert.h>
@@ -82,4 +82,4 @@ BOOL Address2Symbol::init()
 	}
 }
 
-#endif /* WIN32 */
+#endif /* _MSC_VER */
