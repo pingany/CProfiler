@@ -147,6 +147,14 @@
 			Name="Sources"
 			>
 			<File
+				RelativePath=".\Address2Symbol.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\Address2Symbol.h"
+				>
+			</File>
+			<File
 				RelativePath=".\profiler.cpp"
 				>
 			</File>
