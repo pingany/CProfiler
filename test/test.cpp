@@ -20,7 +20,7 @@ void test1()
 	printf("sum = %d\n", sum);
 }
 
-int __attribute__((__no_instrument_function__)) main();
+//int __attribute__((__no_instrument_function__)) main();
 int main()
 {
 	//profiler_reset();

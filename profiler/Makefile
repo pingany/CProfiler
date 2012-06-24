@@ -11,8 +11,8 @@ CXXFLAGS += -g
 LDFLAGS = -g -Wl,-Map,profiler.map
 endif
 
-PROFILER_OBJ = profiler.o 
-OBJS = GccAddress2Symbol.o ../test/test.o
+PROFILER_OBJ = profiler.o GccAddress2Symbol.o
+OBJS =  ../test/test.o
 
 profiler.exe: $(PROFILER_OBJ) $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $^

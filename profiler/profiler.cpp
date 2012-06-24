@@ -101,18 +101,27 @@ extern "C" void profiler_print_info2(void* fileHandler)
 	FuncInfo::const_iterator iter;
 	char* symbol = NULL;
 #ifndef NO_SYMBOL
-	Address2Symbol a2s;
-	a2s.init();
+	Address2Symbol *a2s;
+	if(0 != Address2Symbol::create(&a2s))
+	{
+		fprintf(stderr, "%s\n", "Address2Symbol::create failed");
+		return;
+	}
+	if(!a2s->init())
+	{
+		fprintf(stderr, "%s\n", "Address2Symbol::init failed");		
+		return;
+	}
 #endif
 	for (iter = counts.begin(); iter != counts.end(); iter++)
 	{
 #ifndef NO_SYMBOL
-		symbol = a2s.getSymbol(iter->first);
+		symbol = a2s->getSymbol(iter->first);
 #endif
 		fprintf(fout, "Function %s 0x%08x %d %dms\n", symbol ? symbol : "UnknownSymbol", iter->first, iter->second.count, iter->second.ms);
 #ifndef NO_SYMBOL 
 		if (symbol)
-			a2s.freeSymbol(symbol);
+			a2s->freeSymbol(symbol);
 #endif
 	}
 }

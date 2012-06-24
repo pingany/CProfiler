@@ -16,10 +16,14 @@ typedef unsigned long long U64;
 
 class Address2Symbol
 {
+protected:
+	Address2Symbol(){}
 public:
-	BOOL init();
-	char* getSymbol(U64 address);
-	void freeSymbol(char* symbol);
+	static int create(Address2Symbol** a2s);
+	virtual ~Address2Symbol(){}
+	virtual BOOL init() = 0;
+	virtual char* getSymbol(U64 address) = 0;
+	virtual void freeSymbol(char* symbol) = 0;
 };
 
 #endif /* ADDRESS_2_SYMBOL_H */

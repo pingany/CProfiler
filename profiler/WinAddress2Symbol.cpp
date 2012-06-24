@@ -14,6 +14,20 @@
 #define MIN(x, y)  ((x) < (y) ? (x) : (y))
 #endif
 
+class WinAddress2Symbol : public Address2Symbol
+{
+public:
+	char* getSymbol(U64 address);
+	BOOL init();
+	void freeSymbol(char *symbol);
+};
+
+int Address2Symbol::create(Address2Symbol** p_a2s)
+{
+	*p_a2s = new WinAddress2Symbol();
+	return 0;
+}
+
 char* strndup(char* s1, int n)
 {
 	char* s = (char*)malloc(n + 1);
@@ -24,7 +38,7 @@ char* strndup(char* s1, int n)
 	return s;
 }
 
-char* Address2Symbol::getSymbol(U64 address)
+char* WinAddress2Symbol::getSymbol(U64 address)
 {
 	DWORD64 dwDisplacement = 0;
 	DWORD64 dwAddress = address;
@@ -51,13 +65,13 @@ char* Address2Symbol::getSymbol(U64 address)
 	return buffer;
 }
 
-void Address2Symbol::freeSymbol(char *symbol)
+void WinAddress2Symbol::freeSymbol(char *symbol)
 {
 	assert(symbol);
 	free(symbol);
 }
 
-BOOL Address2Symbol::init()
+BOOL WinAddress2Symbol::init()
 {
 	DWORD  error;
 	HANDLE hProcess;
