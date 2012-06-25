@@ -19,8 +19,8 @@ private:
 public:
 	CommonAddress2Symbol();
 	~CommonAddress2Symbol();
-	char* getSymbol(U64 address);
 	BOOL init();
+	char* getSymbol(U64 address);
 	void freeSymbol(char *symbol);
 };
 
@@ -85,9 +85,9 @@ BOOL CommonAddress2Symbol::init()
 	while(NULL != fgets(line, sizeof(line), fin))
 	{
 		address = strtoul(line, &endp, 16);
-		if(address == 0 || endp != line + 8)
+		if(endp != line + 8)
 			continue;
-		line[strlen(line)-1] = 0; //delete traling
+		line[strlen(line)-1] = 0; //delete tailing \n
 		Symbol s = {address, this->strdup(line+ 8 + 3/*space T|t|b|B space*/)};
 		m_symbols->push_back(s);
 	}

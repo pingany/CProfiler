@@ -1,23 +1,24 @@
+# Makefile
 
-# CXX = /g/MinGW/bin/g++
-CXX = g++
-CXXFLAGS = -DNO_SYMBOL -DNO_HASH_MAP -I../
+# CXXFLAGS += -DNO_SYMBOL
+# CXXFLAGS += -DNO_HASH_MAP
 
-DEBUG?=YES
+DEBUG ?= YES
+
+TARGET ?= program_with_profiler
 
 ifeq ($(DEBUG),YES)
 CXXFLAGS += -DDEBUG_PROFILER 
 CXXFLAGS += -g 
-LDFLAGS = -g -Wl,-Map,profiler.map
+LDFLAGS += -g
 endif
 
-PROFILER_OBJ = profiler.o GccAddress2Symbol.o
-OBJS =  ../test/test.o
-
-profiler.exe: $(PROFILER_OBJ) $(OBJS)
-	$(CXX) $(LDFLAGS) -o $@ $^
+PROFILER_OBJS = $(PROFILER_DIR)/profiler.o $(PROFILER_DIR)/CommonAddress2Symbol.o
 
 $(OBJS) : CXXFLAGS += -finstrument-functions
 
+$(TARGET): $(PROFILER_OBJS) $(OBJS)
+	$(CXX) $(LDFLAGS) -o $@ $^
+
 clean:
-	rm -rf $(OBJS) $(PROFILER_OBJ) *.exe
+	rm -rf $(OBJS) $(PROFILER_OBJS) $(TARGET)

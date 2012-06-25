@@ -1,4 +1,4 @@
-
+#! python
 import sys,os,commands,re
 from optparse import OptionParser
 from bisect import bisect_right
@@ -28,10 +28,14 @@ def strcmp(x, y):
 		return 0
 
 def get_symbols(exefile):
-	return commands.getoutput("nm -C %s |grep -vP '\w \.'| sort -k1" % exefile).split('\n')
+	return commands.getoutput("nm -C --defined-only %s |grep -vP '\w \.'| sort -k1" % exefile)
+
+def get_symbols_list(exefile):
+	return get_symbols(exefile).split('\n')
+
 def run(exefile, iterable=sys.stdin):
 
-	symbols = get_symbols(exefile)
+	symbols = get_symbols_list(exefile)
 
 	for line in iterable:
 		line = line.strip().lower()
@@ -46,7 +50,7 @@ def parseCoredump(file):
 def parseProfilerOutput(exefile, dump):
 	profiler_lines = open(dump).readlines()
 	# re.findall(r"func = 0x([0-9A-Fa-f]{8})", open(file+".profiler").read())
-	symbols = get_symbols(exefile)
+	symbols = get_symbols_list(exefile)
 
 	for line in profiler_lines:
 		g = re.findall(r"0x([0-9A-Fa-f]{8})", line)
@@ -57,20 +61,28 @@ def parseProfilerOutput(exefile, dump):
 			line = line.replace('UnknownSymbol', symbol)
 		print line
 
-if __name__ == "__main__":
+def main():
 	parser = OptionParser()
 
 	parser.add_option("-c", "--coredump", dest="coredump", default=False, 
 		action="store_true")
 	parser.add_option("-p", "--profiler", dest="profiler", default=False, 
 		action="store_true")
-
+	parser.add_option("-s", "--symbol_only", dest="symbol_only", default=False, 
+		action="store_true")
 
 	(options, args) = parser.parse_args()
 	file = args[0]
+	if options.symbol_only:
+		print get_symbols(file)
+		return
+
 	dump = args[1]
 	if options.coredump:
 		parseCoredump(file, dump)
 	
 	if options.profiler:
 		parseProfilerOutput(file, dump)
+
+if __name__ == "__main__":
+	sys.exit(main())
