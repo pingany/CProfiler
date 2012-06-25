@@ -18,6 +18,21 @@ using namespace std;
 #	endif
 #endif /* NO_HASH_MAP */
 
+#ifdef MULTITHREAD_SUPPORT
+#	ifdef __GNUC__
+#		define TLS __thread
+#	elif defined(_MSC_VER)
+#		define TLS __declspec(thread)
+#	else
+#		error "don't support multithread"
+#	endif
+#
+#   define AUTOLOCK(locker)	/* FIXME */
+#else
+#	define TLS
+#   define AUTOLOCK(locker)		
+#endif /* MULTITHREAD_SUPPORT */
+
 #include "Address2Symbol.h"
 #include "profiler.h"
 
@@ -47,27 +62,34 @@ typedef MAP<uint, Info> FuncInfo;
 
 static int initialized = 0;
 static FuncInfo counts;
-static stack<Frame> frames;
-static uint current_function = 0;
+static TLS stack<Frame> frames;
+#ifdef _MSC_VER
+static TLS uint s_current_function = 0;
+#endif
 // static const Info empty_info = {0};
 
 #ifndef TICK
 #define TICK	(clock())
 #endif
 
-static void do_enter()
+static void do_enter(uint current_function)
 {
+#ifndef MULTITHREAD_SUPPORT
 	if (!initialized)
 	{
 		profiler_reset();
 	}
-	FuncInfo::iterator iter = counts.find(current_function);
-	if (iter != counts.end())
-		iter->second.count ++;
-	else
+#endif
 	{
-		Info info = {1, 0};
-		counts.insert(pair<uint, Info>(current_function, info));
+		AUTOLOCK(COUNTS_LOCKER);
+		FuncInfo::iterator iter = counts.find(current_function);
+		if (iter != counts.end())
+			iter->second.count ++;
+		else
+		{
+			Info info = {1, 0};
+			counts.insert(pair<uint, Info>(current_function, info));
+		}
 	}
 	Frame frame = {current_function, 0};
 	frames.push(frame);
@@ -82,16 +104,19 @@ static void do_exit()
 	uint tick = TICK;
 	ASSERT(initialized);
 	Frame &f = frames.top();
-	ASSERT(Exists(counts, f.func));
-	counts[f.func].ms += tick - f.tick;
+	{
+		AUTOLOCK(COUNTS_LOCKER);
+		ASSERT(Exists(counts, f.func));
+		counts[f.func].ms += tick - f.tick;
+	}
 	frames.pop();
 }
 
 extern "C" void profiler_reset()
 {
 	counts.clear();
-	while(!frames.empty())
-		frames.pop();
+	// while(!frames.empty())
+	// 	frames.pop();
 	initialized = 1;
 }
 
@@ -113,16 +138,19 @@ extern "C" void profiler_print_info2(void* fileHandler)
 		return;
 	}
 #endif
-	for (iter = counts.begin(); iter != counts.end(); iter++)
 	{
+		AUTOLOCK(COUNTS_LOCKER);
+		for (iter = counts.begin(); iter != counts.end(); iter++)
+		{
 #ifndef NO_SYMBOL
-		symbol = a2s->getSymbol(iter->first);
+			symbol = a2s->getSymbol(iter->first);
 #endif
-		fprintf(fout, "Function %s 0x%08x %d %dms\n", symbol ? symbol : "UnknownSymbol", iter->first, iter->second.count, iter->second.ms);
+			fprintf(fout, "Function %s 0x%08x %d %dms\n", symbol ? symbol : "UnknownSymbol", iter->first, iter->second.count, iter->second.ms);
 #ifndef NO_SYMBOL 
-		if (symbol)
-			a2s->freeSymbol(symbol);
+			if (symbol)
+				a2s->freeSymbol(symbol);
 #endif
+		}
 	}
 }
 
@@ -142,8 +170,8 @@ extern "C" void profiler_print_info(const char* filename)
 extern "C" void __declspec(naked) _cdecl _penter( void ) {
 	_asm {
 		/* Get the value in the top of stack. */
-		pop current_function
-		push current_function
+		pop s_current_function
+		push s_current_function
 		push eax
 		push ebx
 		push ecx
@@ -152,7 +180,7 @@ extern "C" void __declspec(naked) _cdecl _penter( void ) {
 		push edi
 		push esi
 	}
-	do_enter();
+	do_enter(s_current_function);
 	_asm {
 		pop esi
 		pop edi
@@ -199,9 +227,8 @@ extern "C" void __declspec(naked) _cdecl _pexit( void )
 
 extern "C" void __cyg_profile_func_enter(void *this_func, void *call_site)
 {
-	current_function = (uint)this_func;
 	// DUMP(this_func, call_site);
-	do_enter();
+	do_enter((uint)this_func);
 }
 
 extern "C" void __cyg_profile_func_exit(void *this_func, void *call_site)

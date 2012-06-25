@@ -6,7 +6,8 @@
 extern "C" {
 #endif
 
-/* Reset the profiler, normally no need to call it unless you want to clear every records and restart profiler again in a process. */
+/* Reset the profiler, normally no need to call it unless you want to clear every records and restart profiler again in a process. 
+Note: In multithread context, you need to call it before the first time that "do_enter" being called. */
 void profiler_reset(void);
 
 /*
