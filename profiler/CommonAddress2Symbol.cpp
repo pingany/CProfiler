@@ -2,27 +2,9 @@
 #include <algorithm>
 #include <assert.h>
 using namespace std;
-#include "Address2Symbol.h"
+#include "CommonAddress2Symbol.h"
 
 #define ASSERT assert
-class CommonAddress2Symbol : public Address2Symbol
-{
-public:
-	struct Symbol
-	{
-		unsigned int address;
-		char* symbol;
-	};
-private:
-	vector<Symbol> * m_symbols;
-	char* strdup(const char* s1);
-public:
-	CommonAddress2Symbol();
-	~CommonAddress2Symbol();
-	BOOL init();
-	char* getSymbol(U64 address);
-	void freeSymbol(char *symbol);
-};
 
 int Address2Symbol::create(Address2Symbol** p_a2s)
 {
@@ -66,6 +48,11 @@ char* CommonAddress2Symbol::getSymbol(U64 address)
 		ASSERT(it >m_symbols->begin() && it <= m_symbols->end());
 		return (it-1)->symbol;
 	}
+}
+
+void CommonAddress2Symbol::sortSymbol()
+{
+	sort(m_symbols->begin(), m_symbols->end(), symbol_cmp);
 }
 
 void CommonAddress2Symbol::freeSymbol(char *symbol)

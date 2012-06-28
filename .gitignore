@@ -38,3 +38,12 @@ nbproject/
 
 /debug/
 /release/
+
+
+*.idb
+*.pdb
+*.exe
+mt.dep
+*.intermediate.manifest
+*.ilk
+*.lib
