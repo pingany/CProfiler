@@ -37,6 +37,18 @@ static bool symbol_cmp(const CommonAddress2Symbol::Symbol &s1, const CommonAddre
 
 char* CommonAddress2Symbol::getSymbol(U64 address)
 {
+	const CommonAddress2Symbol::Symbol* s = getSymbolStruct(address);
+	return s ? s->symbol : NULL;
+}
+
+unsigned int CommonAddress2Symbol::getBaseAddress(U64 address)
+{
+	const CommonAddress2Symbol::Symbol* s = getSymbolStruct(address);
+	return s ? s->address : NULL;	
+}
+
+const CommonAddress2Symbol::Symbol* CommonAddress2Symbol::getSymbolStruct(U64 address)
+{
 	Symbol s = {(unsigned int)address, NULL};
 	std::vector<Symbol>::iterator it = upper_bound(m_symbols->begin(), m_symbols->end(), s, symbol_cmp);
 	if(it == m_symbols->begin())
@@ -46,7 +58,7 @@ char* CommonAddress2Symbol::getSymbol(U64 address)
 	else
 	{
 		ASSERT(it >m_symbols->begin() && it <= m_symbols->end());
-		return (it-1)->symbol;
+		return &(*(it-1));
 	}
 }
 

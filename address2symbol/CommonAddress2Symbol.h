@@ -10,7 +10,7 @@ public:
 		unsigned int address;
 		char* symbol;
 	};
-private:
+protected:
 	vector<Symbol> * m_symbols;
 	char* strdup(const char* s1);
 public:
@@ -22,7 +22,10 @@ public:
 		m_symbols->push_back(s); 
 	}
 	void sortSymbol();
-	BOOL init();
-	char* getSymbol(U64 address);
-	void freeSymbol(char *symbol);
+	
+	virtual BOOL init();
+	virtual char* getSymbol(U64 address);
+	virtual void freeSymbol(char *symbol);
+	virtual const Symbol* getSymbolStruct(U64 address);
+	virtual unsigned getBaseAddress(U64 address);
 };

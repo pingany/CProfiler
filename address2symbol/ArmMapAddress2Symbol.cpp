@@ -1,28 +1,34 @@
 #include <vector>
+#include <algorithm>
 #include <assert.h>
 #include <ctype.h>
 using namespace std;
-#include "CommonAddress2Symbol.h"
+#include "ArmMapAddress2Symbol.h"
 
 #define ASSERT assert
 
 #define SYMBOL_TABLE_STRAT_ID "Image Symbol Table"
 #define SYMBOL_TABLE_END_ID "======="
 
-/* If a function is compiled in thumb mode, 
-it's address is a ODD value, we need to convert it a EVEN value(reset the end bit 1 to 0) 
-*/
-#define EVEN_ADDRESS(x)  ((x) & ~0x1U)
-
-class ArmMapAddress2Symbol : public CommonAddress2Symbol
+static bool symbol_cmp(const CommonAddress2Symbol::Symbol &s1, const CommonAddress2Symbol::Symbol &s2)
 {
-	const char* filename;
-public:
-	ArmMapAddress2Symbol(): filename("symbols.map") 
-	{}
-	void setFileName(const char* name) { filename = name; }
-	BOOL init();
-};
+	return EVEN_ADDRESS(s1.address) < EVEN_ADDRESS(s2.address);
+}
+
+const CommonAddress2Symbol::Symbol* ArmMapAddress2Symbol::getSymbolStruct(U64 address)
+{
+	Symbol s = {(unsigned int)address, NULL};
+	std::vector<Symbol>::iterator it = upper_bound(m_symbols->begin(), m_symbols->end(), s, symbol_cmp);
+	if(it == m_symbols->begin())
+	{
+		return NULL;
+	}
+	else
+	{
+		ASSERT(it >m_symbols->begin() && it <= m_symbols->end());
+		return &(*(it-1));
+	}
+}
 
 BOOL ArmMapAddress2Symbol::init()
 {
@@ -47,7 +53,7 @@ BOOL ArmMapAddress2Symbol::init()
 				if(ret != 2 || 0 != strncmp("0x", address_buffer, 2))
 					continue;
 				address = strtoul(address_buffer+2/*remove 0x prefix */, &endp, 16);
-				addSymbol(EVEN_ADDRESS(address), symbol_buffer);
+				addSymbol((address), symbol_buffer);
 			}
 		}
 		else if(0 == strncmp(line, SYMBOL_TABLE_STRAT_ID, start_id_len))
@@ -91,7 +97,7 @@ int main(int argc, char** argv)
 		while(isalnum(*address_end))
 			address_end++;
 		*address_end = 0;
-		char* symbol = a2s.getSymbol(EVEN_ADDRESS(strtoul(address+2, NULL, 16)));
+		char* symbol = a2s.getSymbol((strtoul(address+2, NULL, 16)));
 		printf("%s\n", symbol ? symbol : "UnknownSymbol");
 		if(symbol)
 			a2s.freeSymbol(symbol);
