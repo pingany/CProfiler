@@ -46,32 +46,36 @@ using namespace std;
 #undef uint
 typedef unsigned int uint;
 
-struct Info
+/* The statistics of executing information of a function
+ticks_total = ticks_self + ticks_profiler + sum([subfunc.ticks_total for each subfunc called in this function ])
+ */
+struct FuncInfo
 {
-	uint count;
-	uint ms;
-	uint ticks_self;
-	uint ticks_of_profiler;
+	uint count;	/* Indicate how many times this function be called. */
+	uint ticks_total;	/* total times consumed by this function, exclude times consumed by profiler when enter and leave this function */
+	uint ticks_self; /* times only consumed by this function self, include times of jumping to sub functions, exculde times consumed by functions called in it. */ 
+	uint ticks_profiler; /* times consumed by the profiler itself in this function */
 };
 
+/* Frame: the information during executing a function at once. */
 struct Frame
 {
-	uint func;
-	uint tick;
-	uint subtick;
-	uint ticks_of_subfunc;
-	uint ticks_of_profiler;
+	uint func;	/* current function */
+	uint tick_enter; /* the time when enter this function */
+	uint tick_enter_subfunc; /* the last time when call other functions in this function */
+	uint ticks_subfunc; /* times consumed by functions called in this function */
+	uint ticks_profiler; /* times consumed by the profiler in this function */
 };
 
-typedef MAP<uint, Info> FuncInfo;
+typedef MAP<uint, FuncInfo> FuncInfos;
 
 static int initialized = 0;
-static FuncInfo counts;
+static FuncInfos funcinfos;
 static TLS stack<Frame> frames;
 #ifdef _MSC_VER
 static TLS uint s_current_function = 0;
 #endif
-// static const Info empty_info = {0};
+// static const FuncInfo empty_info = {0};
 
 #ifndef TICK
 #define TICK	(clock())
@@ -79,68 +83,70 @@ static TLS uint s_current_function = 0;
 
 static void do_enter(uint current_function)
 {
+	uint tick_begin = TICK;
 #ifndef MULTITHREAD_SUPPORT
 	if (!initialized)
 	{
 		profiler_reset();
 	}
 #endif
-	uint current_tick = TICK;
 	if (frames.size() > 0)
 	{
 		Frame &f = frames.top();
-		f.subtick = current_tick;
+		f.tick_enter_subfunc = tick_begin;
 	}
 	{
 		AUTOLOCK(COUNTS_LOCKER);
-		FuncInfo::iterator iter = counts.find(current_function);
-		if (iter != counts.end())
+		FuncInfos::iterator iter = funcinfos.find(current_function);
+		if (iter != funcinfos.end())
 			iter->second.count ++;
 		else
 		{
-			Info info = {1, 0, 0, 0};
-			counts.insert(pair<uint, Info>(current_function, info));
+			FuncInfo info = {1, 0, 0, 0};
+			funcinfos.insert(pair<uint, FuncInfo>(current_function, info));
 		}
 	}
-	Frame *parent_frame = frames.size() > 0 ? (&frames.top()) : NULL; 
+	Frame *p_parent_frame = frames.size() > 0 ? (&frames.top()) : NULL; 
 	Frame frame = {current_function, 0, 0, 0, 0};
 	frames.push(frame);
 	Frame &topf = frames.top();
-	if (parent_frame)
+	uint tick_end = TICK;
+	if (p_parent_frame)
 	{
-		parent_frame->ticks_of_profiler += TICK - current_tick;
+		p_parent_frame->ticks_profiler += tick_end - tick_begin;
 	}
 	/* Get tick in the end, above code may take much time, which makes profiler not exact */
-	topf.tick = TICK;
+	topf.tick_enter = tick_end;
 }
 
 static void do_exit()
 {
 	/* Get tick first, following code may take much time, which makes profiler not exact */
-	uint tick = TICK;
+	uint tick_begin = TICK;
 	ASSERT(initialized);
 	Frame &f = frames.top();
 	{
 		AUTOLOCK(COUNTS_LOCKER);
-		ASSERT(Exists(counts, f.func));
-		Info &info = counts[f.func];
-		info.ms += tick - f.tick;
-		info.ticks_self += tick - f.tick - f.ticks_of_subfunc;
-		info.ticks_of_profiler += f.ticks_of_profiler;
+		ASSERT(Exists(funcinfos, f.func));
+		FuncInfo &info = funcinfos[f.func];
+		info.ticks_total += tick_begin - f.tick_enter;
+		info.ticks_self += tick_begin - f.tick_enter - f.ticks_subfunc;
+		info.ticks_profiler += f.ticks_profiler;
 	}
 	frames.pop();
 	if (frames.size() > 0)
 	{
 		Frame &f = frames.top();
-		ASSERT(f.subtick > 0);
-		f.ticks_of_subfunc += TICK - f.subtick;
-		f.ticks_of_profiler += TICK - tick;
+		ASSERT(f.tick_enter_subfunc > 0);
+		uint tick_end = TICK;
+		f.ticks_subfunc += tick_end - f.tick_enter_subfunc;
+		f.ticks_profiler += tick_end - tick_begin;
 	}
 }
 
 extern "C" void profiler_reset()
 {
-	counts.clear();
+	funcinfos.clear();
 	// while(!frames.empty())
 	// 	frames.pop();
 	initialized = 1;
@@ -149,7 +155,7 @@ extern "C" void profiler_reset()
 extern "C" void profiler_print_info2(void* fileHandler)
 {
 	FILE* fout = (FILE*)fileHandler;
-	FuncInfo::const_iterator iter;
+	FuncInfos::const_iterator iter;
 	char* symbol = NULL;
 #ifndef NO_SYMBOL
 	Address2Symbol *a2s;
@@ -165,14 +171,15 @@ extern "C" void profiler_print_info2(void* fileHandler)
 	}
 #endif
 	{
+		fprintf(fout, "Function\tAddress\tCount\tTotal(ms)\tSelf\tProfiler\n");
 		AUTOLOCK(COUNTS_LOCKER);
-		for (iter = counts.begin(); iter != counts.end(); iter++)
+		for (iter = funcinfos.begin(); iter != funcinfos.end(); iter++)
 		{
 #ifndef NO_SYMBOL
 			symbol = a2s->getSymbol(iter->first);
 #endif
-			fprintf(fout, "Function %s 0x%08x %d %dms %dms %dms\n", symbol ? symbol : "UnknownSymbol"
-				, iter->first, iter->second.count, iter->second.ms, iter->second.ticks_self, iter->second.ticks_of_profiler);
+			fprintf(fout, "%s\t0x%08x\t%d\t%d\t%d\t%d\n", symbol ? symbol : "UnknownSymbol"
+				, iter->first, iter->second.count, iter->second.ticks_total, iter->second.ticks_self, iter->second.ticks_profiler);
 #ifndef NO_SYMBOL 
 			if (symbol)
 				a2s->freeSymbol(symbol);
