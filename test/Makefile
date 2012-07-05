@@ -3,6 +3,6 @@
 CXX = g++
 CXXFLAGS += -I../
 OBJS = test.o
-PROFILER_DIR = ../profiler
+ROOT_DIR = ..
 
 include ../profiler/Makefile

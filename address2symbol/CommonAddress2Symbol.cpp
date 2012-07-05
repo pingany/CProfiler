@@ -44,7 +44,7 @@ char* CommonAddress2Symbol::getSymbol(U64 address)
 unsigned int CommonAddress2Symbol::getBaseAddress(U64 address)
 {
 	const CommonAddress2Symbol::Symbol* s = getSymbolStruct(address);
-	return s ? s->address : NULL;	
+	return s ? s->address : 0;	
 }
 
 const CommonAddress2Symbol::Symbol* CommonAddress2Symbol::getSymbolStruct(U64 address)

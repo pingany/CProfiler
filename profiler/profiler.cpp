@@ -33,7 +33,7 @@ using namespace std;
 #   define AUTOLOCK(locker)		
 #endif /* MULTITHREAD_SUPPORT */
 
-#include "Address2Symbol.h"
+#include "address2symbol/Address2Symbol.h"
 #include "profiler.h"
 
 #ifdef DEBUG_PROFILER
@@ -50,12 +50,17 @@ struct Info
 {
 	uint count;
 	uint ms;
+	uint ticks_self;
+	uint ticks_of_profiler;
 };
 
 struct Frame
 {
 	uint func;
 	uint tick;
+	uint subtick;
+	uint ticks_of_subfunc;
+	uint ticks_of_profiler;
 };
 
 typedef MAP<uint, Info> FuncInfo;
@@ -80,6 +85,12 @@ static void do_enter(uint current_function)
 		profiler_reset();
 	}
 #endif
+	uint current_tick = TICK;
+	if (frames.size() > 0)
+	{
+		Frame &f = frames.top();
+		f.subtick = current_tick;
+	}
 	{
 		AUTOLOCK(COUNTS_LOCKER);
 		FuncInfo::iterator iter = counts.find(current_function);
@@ -87,13 +98,18 @@ static void do_enter(uint current_function)
 			iter->second.count ++;
 		else
 		{
-			Info info = {1, 0};
+			Info info = {1, 0, 0, 0};
 			counts.insert(pair<uint, Info>(current_function, info));
 		}
 	}
-	Frame frame = {current_function, 0};
+	Frame *parent_frame = frames.size() > 0 ? (&frames.top()) : NULL; 
+	Frame frame = {current_function, 0, 0, 0, 0};
 	frames.push(frame);
 	Frame &topf = frames.top();
+	if (parent_frame)
+	{
+		parent_frame->ticks_of_profiler += TICK - current_tick;
+	}
 	/* Get tick in the end, above code may take much time, which makes profiler not exact */
 	topf.tick = TICK;
 }
@@ -107,9 +123,19 @@ static void do_exit()
 	{
 		AUTOLOCK(COUNTS_LOCKER);
 		ASSERT(Exists(counts, f.func));
-		counts[f.func].ms += tick - f.tick;
+		Info &info = counts[f.func];
+		info.ms += tick - f.tick;
+		info.ticks_self += tick - f.tick - f.ticks_of_subfunc;
+		info.ticks_of_profiler += f.ticks_of_profiler;
 	}
 	frames.pop();
+	if (frames.size() > 0)
+	{
+		Frame &f = frames.top();
+		ASSERT(f.subtick > 0);
+		f.ticks_of_subfunc += TICK - f.subtick;
+		f.ticks_of_profiler += TICK - tick;
+	}
 }
 
 extern "C" void profiler_reset()
@@ -145,7 +171,8 @@ extern "C" void profiler_print_info2(void* fileHandler)
 #ifndef NO_SYMBOL
 			symbol = a2s->getSymbol(iter->first);
 #endif
-			fprintf(fout, "Function %s 0x%08x %d %dms\n", symbol ? symbol : "UnknownSymbol", iter->first, iter->second.count, iter->second.ms);
+			fprintf(fout, "Function %s 0x%08x %d %dms %dms %dms\n", symbol ? symbol : "UnknownSymbol"
+				, iter->first, iter->second.count, iter->second.ms, iter->second.ticks_self, iter->second.ticks_of_profiler);
 #ifndef NO_SYMBOL 
 			if (symbol)
 				a2s->freeSymbol(symbol);

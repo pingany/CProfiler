@@ -3,6 +3,8 @@
 # CXXFLAGS += -DNO_SYMBOL
 # CXXFLAGS += -DNO_HASH_MAP
 
+CXXFLAGS += -I../
+
 DEBUG ?= YES
 
 TARGET ?= program_with_profiler
@@ -13,7 +15,7 @@ CXXFLAGS += -g
 LDFLAGS += -g
 endif
 
-PROFILER_OBJS = $(PROFILER_DIR)/profiler.o $(PROFILER_DIR)/CommonAddress2Symbol.o
+PROFILER_OBJS = $(ROOT_DIR)/profiler/profiler.o $(ROOT_DIR)/address2symbol/CommonAddress2Symbol.o
 
 $(OBJS) : CXXFLAGS += -finstrument-functions
 
